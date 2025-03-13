@@ -1,145 +1,304 @@
-import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { Appbar, Avatar, Card, Title, Paragraph, List, IconButton, Divider } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Image, View } from 'react-native';
+import { Card, Title, Paragraph, Text, Button, Appbar, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-type RootStackParamList = {
-  TeacherProfile: undefined;
-  ClassScreen: {
-    subject: string;
-    schedule: string;
-    classroom: string;
-  };
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'TeacherProfile'>;
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import axios from 'axios';
 
 interface Class {
-  subject: string;
+  name: string;
   schedule: string;
-  classroom: string;
+  description: string;
 }
 
-interface TeacherProfileProps {
-  teacherName: string;
-  classes: Class[];
-}
+const TeacherProfileScreen = () => {
+  const router = useRouter();
+  const { teacherId } = useLocalSearchParams();
 
-const TeacherProfile: React.FC<TeacherProfileProps> = ({ teacherName, classes }) => {
-  const navigation = useNavigation<NavigationProp>();
+  const [teacherData, setTeacherData] = useState({ name: '', studentID: '', email: '' });
+  const [updatedData, setUpdatedData] = useState(teacherData);
+  const [editMode, setEditMode] = useState(false);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleClassPress = (classItem: Class) => {
-    navigation.navigate('ClassScreen', {
-      subject: classItem.subject,
-      schedule: classItem.schedule,
-      classroom: classItem.classroom,
-    });
+  useEffect(() => {
+    if (!teacherId) {
+      setError('No teacherId found');
+      setLoading(false);
+      return;
+    }
+
+    const fetchTeacherData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const teacherResponse = await axios.post(
+          'http://localhost:3000/api/graphql',
+          {
+            query: `
+              query Query($where: UserWhereInput!) {
+                users(where: $where) {
+                  name
+                  studentID
+                  email
+                }
+              }
+            `,
+            variables: { where: { id: { equals: teacherId } } },
+          }
+        );
+
+        if (teacherResponse.data?.data?.users?.length > 0) {
+          const fetchedData = teacherResponse.data.data.users[0];
+          setTeacherData(fetchedData);
+          setUpdatedData(fetchedData);
+        } else {
+          throw new Error('No teacher data found');
+        }
+
+        const classResponse = await axios.post(
+          'http://localhost:3000/api/graphql',
+          {
+            query: `
+              query Query($where: ClassWhereInput!) {
+                classes(where: $where) {
+                  name
+                  schedule
+                  description
+                }
+              }
+            `,
+            variables: {
+              where: {
+                teacher: {
+                  id: {
+                    equals: teacherId,
+                  },
+                },
+              },
+            },
+          }
+        );
+
+        setClasses(classResponse.data.data.classes || []);
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
+        setError(error.message || 'Error fetching data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeacherData();
+  }, [teacherId]);
+
+  const handleUpdate = async () => {
+    try {
+      const response = await axios.post(
+        'http://localhost:3000/api/graphql',
+        {
+          query: `
+            mutation UpdateUser($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
+              updateUser(where: $where, data: $data) {
+                name
+                studentID
+                email
+              }
+            }
+          `,
+          variables: {
+            where: { id: teacherId },
+            data: {
+              name: updatedData.name,
+              studentID: updatedData.studentID,
+              email: updatedData.email,
+            },
+          },
+        }
+      );
+
+      if (response.data.data.updateUser) {
+        setTeacherData(response.data.data.updateUser);
+        setEditMode(false);
+        alert('Datos actualizados correctamente.');
+      } else {
+        alert('Error al actualizar los datos.');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Hubo un error al intentar actualizar los datos.');
+    }
   };
 
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('userName');
-      await AsyncStorage.removeItem('userEmail');
-      navigation.navigate('index'); // Navegar a la pantalla de inicio o login
+      router.push('/');
     } catch (error) {
       console.error('Error during logout:', error);
     }
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.profileCard}>
-      <Appbar.Action icon="logout" onPress={handleLogout} />
-        <Card.Content>
-          <Avatar.Text size={80} label={teacherName[0]} style={styles.avatar} />
-          <Title style={styles.teacherName}>{teacherName}</Title>
-          <Paragraph style={styles.sectionTitle}>Classes</Paragraph>
-        </Card.Content>
-      </Card>
+  const handleDelete = async () => {
+    try {
+      await axios.post(
+        'http://localhost:3000/api/graphql',
+        {
+          query: `
+            mutation DeleteUser($where: UserWhereUniqueInput!) {
+              deleteUser(where: $where) {
+                id
+                name
+              }
+            }
+          `,
+          variables: { where: { id: teacherId } },
+        }
+      );
+      await AsyncStorage.clear(); // Clear the user data in AsyncStorage
+      router.push('/TeachersScreen'); // Redirect to teachers list or login
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Hubo un error al eliminar la cuenta.');
+    }
+  };
 
-      {classes.map((classItem, index) => (
-        <Card
-          key={index}
-          style={styles.classCard}
-          onPress={() => handleClassPress(classItem)}
-        >
-          <Card.Content>
-            <Title>{classItem.subject}</Title>
-            <Paragraph>{classItem.schedule}</Paragraph>
-            <Paragraph>{classItem.classroom}</Paragraph>
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Cargando...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Appbar.Header style={styles.appbar}>
+        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.Content title="Perfil del Docente" titleStyle={styles.appbarTitle} />
+        <Appbar.Action icon="logout" onPress={handleLogout} />
+      </Appbar.Header>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card style={styles.profileCard}>
+          <Card.Content style={styles.profileContent}>
+            <Image
+              source={{
+                uri: 'https://static.vecteezy.com/system/resources/thumbnails/002/318/271/small/user-profile-icon-free-vector.jpg',
+              }}
+              style={styles.profileImage}
+            />
+            <View style={styles.profileInfo}>
+              {editMode ? (
+                <>
+                  <TextInput
+                    label="Nombre"
+                    value={updatedData.name}
+                    onChangeText={(text) => setUpdatedData({ ...updatedData, name: text })}
+                  />
+                  <TextInput
+                    label="ID"
+                    value={updatedData.studentID}
+                    onChangeText={(text) => setUpdatedData({ ...updatedData, studentID: text })}
+                  />
+                  <TextInput
+                    label="Email"
+                    value={updatedData.email}
+                    onChangeText={(text) => setUpdatedData({ ...updatedData, email: text })}
+                  />
+                  <Button mode="contained" onPress={handleUpdate}>
+                    Guardar Cambios
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Title style={styles.profileTitle}>{teacherData.name}</Title>
+                  <Paragraph style={styles.profileText}>ID: {teacherData.studentID}</Paragraph>
+                  <Paragraph style={styles.profileText}>Email: {teacherData.email}</Paragraph>
+                  <Button style={styles.editButton} mode="text" onPress={() => setEditMode(true)}>
+                    Editar Información
+                  </Button>
+                </>
+              )}
+            </View>
           </Card.Content>
-          <Card.Actions>
-            <IconButton icon="chevron-right" size={24} onPress={() => handleClassPress(classItem)} />
-          </Card.Actions>
         </Card>
-      ))}
-    </ScrollView>
+        <Title style={styles.classesTitle}>Clases Asignadas</Title>
+        {classes.map((classItem, index) => (
+          <Card
+            key={index}
+            style={styles.classCard}
+            onPress={() =>
+              router.push({
+                pathname: '/(tabs)/classScreen',
+                params: {
+                  subject: classItem.name,
+                  schedule: classItem.schedule,
+                  classroom: classItem.description,
+                },
+              })
+            }
+          >
+            <Card.Content>
+              <Title style={styles.classTitle}>{classItem.name}</Title>
+              <Paragraph style={styles.classText}>{classItem.description}</Paragraph>
+              <Text style={styles.classSchedule}>Horario: {classItem.schedule}</Text>
+            </Card.Content>
+          </Card>
+        ))}
+      </ScrollView>
+      <Button
+        mode="contained"
+        onPress={() => router.push('/(tabs)/TeachersScreen')}
+        style={styles.backButton}
+        icon="arrow-left"
+      >
+        Regresar
+      </Button>
+      <Button
+        mode="contained"
+        onPress={handleDelete}
+        style={styles.deleteButton}
+        icon="delete"
+      >
+        Eliminar Cuenta
+      </Button>
+    </View>
   );
 };
 
-export const TeacherProfileScreen: React.FC = () => {
-  const sampleData = {
-    teacherName: "Juan Carlos Herrera",
-    classes: [
-      {
-        subject: "Inteligencia de Negocios",
-        schedule: "9:00 - 10:50 AM",
-        classroom: "Room 508",
-      },
-      {
-        subject: "Inteligencia de Negocios",
-        schedule: "11:00 - 12:50 PM",
-        classroom: "Room 508",
-      },
-      {
-        subject: "Inteligencia de Negocios",
-        schedule: "1:00 - 2:50 PM",
-        classroom: "Room 508",
-      },
-    ],
-  };
-
-  return <TeacherProfile {...sampleData} />;
-};
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  scrollContent: { padding: 16, paddingBottom: 80 },
+  profileCard: { marginBottom: 16, elevation: 2 },
+  profileContent: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(30, 58, 99, 0.2' },
+  profileImage: { width: 60, height: 60, borderRadius: 30, marginRight: 16 },
+  profileInfo: { flex: 1 },
+  profileTitle: {
+    color: '#1e3a63', // Tono más oscuro de azul
+    fontWeight: 'bold', // Negritas en el título
   },
-  profileCard: {
-    marginBottom: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    elevation: 4,
-    padding: 16,
-  },
-  avatar: {
-    alignSelf: 'center',
-    marginBottom: 16,
-    backgroundColor: '#6200ee',
-  },
-  teacherName: {
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#6b6b6b',
-  },
-  classCard: {
-    marginBottom: 16,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    elevation: 2,
-  },
+  profileText: { color: '#1e3a63', fontSize: 16 },
+  classesTitle: { marginVertical: 16, fontSize: 20, fontWeight: 'bold' },
+  classCard: { marginBottom: 12 },
+  classTitle: { fontSize: 18, fontWeight: 'bold' },
+  classText: { fontSize: 14 },
+  classSchedule: { fontSize: 12, color: '#777' },
+  appbar: { backgroundColor: '#1e3a63' },
+  appbarTitle: { fontWeight: 'bold', color: 'white' },
+  errorText: { color: 'red', textAlign: 'center' },
+  backButton: { marginTop: 16, backgroundColor:'#1e3a63'},
+  deleteButton: { marginTop: 16, marginBottom: 16, backgroundColor: '#1e3a63' },
+  editButton: {marginTop: 16, backgroundColor: 'rgba(30, 58, 99, 0.1)'}
 });
 
 export default TeacherProfileScreen;

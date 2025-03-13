@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import RNPickerSelect from 'react-native-picker-select';
-import axios from 'axios'; 
+import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
-  StudentProfile: {
-    studentId: string;
-  };
+  StudentProfile: { studentId: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'StudentProfile'>;
@@ -42,6 +40,7 @@ const StudentCard: React.FC<Student> = ({ id, name, studentID, email }) => {
 
 const StudentsScreen: React.FC = () => {
   const [sortOption, setSortOption] = useState<'name' | 'studentID'>('name');
+  const [filterOption, setFilterOption] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -56,11 +55,12 @@ const StudentsScreen: React.FC = () => {
     const fetchStudents = async () => {
       try {
         const response = await axios.post(
-          'https://classtrack-api-alumnos-bqh8a0fnbpefhhgq.mexicocentral-01.azurewebsites.net/api/graphql',
+          'http://localhost:3000/api/graphql',
           {
             query: `
               query Query($where: UserWhereInput!) {
                 users(where: $where) {
+                  id
                   name
                   studentID
                   email
@@ -69,9 +69,7 @@ const StudentsScreen: React.FC = () => {
             `,
             variables: {
               where: {
-                role: {
-                  equals: 'student',
-                },
+                role: { equals: 'student' },
               },
             },
           }
@@ -90,7 +88,7 @@ const StudentsScreen: React.FC = () => {
   const handleCreateStudent = async () => {
     try {
       const response = await axios.post(
-        'https://classtrack-api-alumnos-bqh8a0fnbpefhhgq.mexicocentral-01.azurewebsites.net/api/graphql',
+        'http://localhost:3000/api/graphql',
         {
           query: `
             mutation Mutation($data: UserCreateInput!) {
@@ -115,9 +113,13 @@ const StudentsScreen: React.FC = () => {
       );
 
       const createdStudent = response.data.data.createUser;
-      setStudents([...students, createdStudent]);
-      Alert.alert('Success', 'Student created successfully!');
-      setModalVisible(false);
+      if (createdStudent) {
+        setStudents([...students, createdStudent]);
+        Alert.alert('Success', 'Student created successfully!');
+        setModalVisible(false);
+      } else {
+        throw new Error('Invalid response');
+      }
     } catch (error) {
       console.error('Error creating student:', error);
       Alert.alert('Error', 'Failed to create student. Please try again.');
@@ -125,12 +127,24 @@ const StudentsScreen: React.FC = () => {
   };
 
   const sortData = () => {
-    if (sortOption === 'name') {
-      return [...students].sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortOption === 'studentID') {
-      return [...students].sort((a, b) => a.studentID.localeCompare(b.studentID));
+    let filteredStudents = students;
+
+    // Filter students
+    if (filterOption) {
+      filteredStudents = filteredStudents.filter(student => 
+        student.name.toLowerCase().includes(filterOption.toLowerCase()) ||
+        student.studentID.toLowerCase().includes(filterOption.toLowerCase()) ||
+        student.email.toLowerCase().includes(filterOption.toLowerCase())
+      );
     }
-    return students;
+
+    // Sort filtered students
+    if (sortOption === 'name') {
+      return filteredStudents.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortOption === 'studentID') {
+      return filteredStudents.sort((a, b) => a.studentID.localeCompare(b.studentID));
+    }
+    return filteredStudents;
   };
 
   if (loading) {
@@ -145,25 +159,26 @@ const StudentsScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Student List</Text>
-        <RNPickerSelect
-          onValueChange={(value) => setSortOption(value)}
-          items={[
-            { label: 'Name', value: 'name' },
-            { label: 'ID', value: 'studentID' },
-          ]}
-          style={pickerSelectStyles}
-          value={sortOption}
-          placeholder={{ label: 'Sort by...', value: null }}
-          useNativeAndroidPickerStyle={false}
+        <View style={styles.headerActions}>
+        </View>
+      </View>
+      
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Filter students..."
+          value={filterOption}
+          onChangeText={setFilterOption}
         />
       </View>
+
       <FlatList
         contentContainerStyle={styles.listContainer}
         data={sortData()}
-        keyExtractor={(item) => item.studentID}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <StudentCard
-            id={item.studentID}
+            id={item.id}
             name={item.name}
             studentID={item.studentID}
             email={item.email}
@@ -209,6 +224,8 @@ const StudentsScreen: React.FC = () => {
   );
 };
 
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -219,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#6200EE',
+    backgroundColor: '#1e3a63',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
   },
@@ -237,6 +254,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 16,
+    marginTop: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     shadowColor: '#000',
@@ -261,8 +279,25 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 16,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8f9fa',
+  },
+  searchInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   addButton: {
-    backgroundColor: '#6200EE',
+    backgroundColor: '#1e3a63',
     padding: 16,
     margin: 16,
     borderRadius: 8,

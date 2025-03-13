@@ -1,52 +1,72 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { TabBarIcon } from '@/components/navigation/TabBarIcon';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#FFFFFF', // Color de íconos activos
+        tabBarInactiveTintColor: '#B0C4DE', // Color de íconos inactivos
+        tabBarStyle: {
+          backgroundColor: '#1e3a63', // Color de fondo de la barra
+        },
         headerShown: false,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
-        options={{ href: null,
+        options={{
+          href: null,
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} />
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
-        name="StudentScreen"
+        name="StudentProfile"
         options={{
+          href: null,
           title: 'Student',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} />
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="classScreen"
         options={{
+          href: null,
           title: 'Class Info',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'reader' : 'reader-outline'} color={color} />
+            <Ionicons
+              name={focused ? 'reader' : 'reader-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="TeacherProfileScreen"
         options={{
-          title: 'Teacher Profile', 
+          href: null,
+          title: 'Teacher Profile',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} />
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -56,7 +76,7 @@ export default function TabLayout() {
           title: 'Students',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'people' : 'people-outline'} 
+              name={focused ? 'people' : 'people-outline'}
               size={24}
               color={color}
             />
@@ -69,15 +89,15 @@ export default function TabLayout() {
           title: 'Classes',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'book' : 'book-outline'} 
+              name={focused ? 'book' : 'book-outline'}
               size={24}
               color={color}
             />
           ),
         }}
-      />;
+      />
       <Tabs.Screen
-        name="TeachersScreen" // Newly added TeachersScreen
+        name="TeachersScreen"
         options={{
           title: 'Teachers',
           tabBarIcon: ({ color, focused }) => (

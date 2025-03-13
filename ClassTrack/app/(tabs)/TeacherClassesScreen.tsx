@@ -1,31 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Button,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import RNPickerSelect from 'react-native-picker-select';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { gql, useQuery } from '@apollo/client';
+import { gql, useMutation, useQuery } from '@apollo/client';
+import { useRouter } from 'expo-router';
 
-type RootStackParamList = {
-  ClassDetails: {
-    subject: string;
-    schedule: string;
-    description: string;
-  };
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ClassDetails'>;
-
-interface Class {
-  subject: string;
-  schedule: string;
-  description: string;
-}
-
-// GraphQL Query
 const GET_CLASSES = gql`
   query GetClasses {
     classes {
+      id
       name
       schedule
       description
@@ -33,19 +26,45 @@ const GET_CLASSES = gql`
   }
 `;
 
-const ClassCard: React.FC<Class> = ({ subject, schedule, description }) => {
-  const navigation = useNavigation<NavigationProp>();
+const GET_TEACHERS = gql`
+  query Query($where: UserWhereInput!) {
+    users(where: $where) {
+      id
+      name
+    }
+  }
+`;
 
-  const handlePress = () => {
-    navigation.navigate('ClassDetails', { subject, schedule, description });
-  };
+const CREATE_CLASS = gql`
+  mutation Mutation($data: ClassCreateInput!) {
+    createClass(data: $data) {
+      name
+      description
+      schedule
+      teacher {
+        name
+      }
+    }
+  }
+`;
+
+const ClassCard: React.FC<{ classData: any; onPress: (classData: any) => void }> = ({
+  classData,
+  onPress,
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <TouchableOpacity style={styles.classCard} onPress={handlePress}>
+    <TouchableOpacity
+      style={[styles.classCard, isHovered && styles.classCardHovered]}
+      onPressIn={() => setIsHovered(true)} // Simulando el hover al presionar
+      onPressOut={() => setIsHovered(false)} // Restaurando el estado cuando se deja de presionar
+      onPress={() => onPress(classData)}
+    >
       <View style={styles.classInfo}>
-        <Text style={styles.classSubject}>{subject}</Text>
-        <Text style={styles.classDetails}>{schedule}</Text>
-        <Text style={styles.classDetails}>{description}</Text>
+        <Text style={styles.classSubject}>{classData.name}</Text>
+        <Text style={styles.classDetails}>{classData.schedule}</Text>
+        <Text style={styles.classDetails}>{classData.description}</Text>
       </View>
       <FontAwesome name="chevron-right" size={20} color="#666" />
     </TouchableOpacity>
@@ -53,10 +72,24 @@ const ClassCard: React.FC<Class> = ({ subject, schedule, description }) => {
 };
 
 const ClassesScreen: React.FC = () => {
-  const [sortOption, setSortOption] = useState<'alphabetical' | 'date'>('alphabetical');
-  const { loading, error, data } = useQuery(GET_CLASSES);
+  const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [className, setClassName] = useState('');
+  const [classDescription, setClassDescription] = useState('');
+  const [classSchedule, setClassSchedule] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
 
-  if (loading) {
+  const { loading: loadingClasses, error: errorClasses, data: dataClasses } = useQuery(GET_CLASSES);
+  const { loading: loadingTeachers, data: dataTeachers } = useQuery(GET_TEACHERS, {
+    variables: { where: { role: { equals: 'teacher' } } },
+  });
+
+  const [createClass] = useMutation(CREATE_CLASS, {
+    refetchQueries: [GET_CLASSES],
+    onCompleted: () => setModalVisible(false),
+  });
+
+  if (loadingClasses) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
@@ -64,93 +97,165 @@ const ClassesScreen: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (errorClasses) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error loading classes: {error.message}</Text>
+        <Text style={styles.errorText}>Error loading classes: {errorClasses.message}</Text>
       </View>
     );
   }
 
-  const classes: Class[] = data.classes.map((item: any) => ({
-    subject: item.name,
-    schedule: item.schedule,
-    classroom: item.description || 'No description',
-  }));
+  const handleClassPress = (classData: any) => {
+    router.push({
+      pathname: '/(tabs)/classScreen',
+      params: {
+        id: classData.id, // Corrected to pass class ID
+      },
+    });
+  };
 
-  const sortData = () => {
-    if (sortOption === 'alphabetical') {
-      return [...classes].sort((a, b) => a.subject.localeCompare(b.subject));
-    } else if (sortOption === 'date') {
-      return [...classes].sort((a, b) => a.schedule.localeCompare(b.schedule));
-    }
-    return classes;
+  const handleCreateClass = () => {
+    if (!className || !classSchedule || !selectedTeacher) return;
+    createClass({
+      variables: {
+        data: {
+          name: className,
+          description: classDescription,
+          schedule: classSchedule,
+          teacher: { connect: { id: selectedTeacher } },
+        },
+      },
+    });
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Classes</Text>
-        <RNPickerSelect
-          onValueChange={(value) => setSortOption(value)}
-          items={[
-            { label: 'Alphabetical', value: 'alphabetical' },
-            { label: 'Date', value: 'date' },
-          ]}
-          style={{
-            ...pickerSelectStyles,
-            placeholder: pickerSelectStyles.placeholder,
-          }}
-          value={sortOption}
-          placeholder={{ label: 'Select filter', value: null }}
-          useNativeAndroidPickerStyle={false}
-        />
+        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
+          <Text style={styles.addButtonText}>+ Add Class</Text>
+        </TouchableOpacity>
       </View>
+
       <FlatList
         contentContainerStyle={styles.listContainer}
-        data={sortData()}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <ClassCard subject={item.subject} schedule={item.schedule} description={item.description} />
-        )}
+        data={dataClasses.classes}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ClassCard classData={item} onPress={handleClassPress} />}
       />
+
+      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Create Class</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Class Name"
+              value={className}
+              onChangeText={setClassName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Class Schedule"
+              value={classSchedule}
+              onChangeText={setClassSchedule}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Description"
+              value={classDescription}
+              onChangeText={setClassDescription}
+            />
+
+            {loadingTeachers ? (
+              <ActivityIndicator size="small" color="#0000ff" />
+            ) : (
+              <RNPickerSelect
+                onValueChange={(value) => setSelectedTeacher(value)}
+                items={dataTeachers.users.map((teacher: any) => ({
+                  label: teacher.name,
+                  value: teacher.id,
+                }))}
+                style={pickerSelectStyles}
+                placeholder={{ label: 'Select a teacher', value: null }}
+              />
+            )}
+
+            <View style={styles.modalButtons}>
+              <Button title="Cancel" onPress={() => setModalVisible(false)} />
+              <Button title="Create" onPress={handleCreateClass} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: 'red',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { fontSize: 16, color: 'red' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e3a63',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#ddd',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: '#fff',
   },
+  addButton: {
+    backgroundColor: '#1e3a63',
+    borderRadius: 8,
+    padding: 10,
+  },
+  addButtonText: { color: '#fff', fontWeight: '600' },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    width: '90%',
+  },
+  classInfo: {
+    flex: 1,
+  },
+  classSubject: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 4,
+  },
+  classDetails: {
+    fontSize: 14,
+    color: '#666',
+  },
+  listContainer: {
+    paddingBottom: 16,
+    marginTop:16,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 10 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    width: '100%',
+  },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   classCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -168,21 +273,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  classInfo: {
-    flex: 1,
-  },
-  classSubject: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 4,
-  },
-  classDetails: {
-    fontSize: 14,
-    color: '#666',
-  },
-  listContainer: {
-    marginTop: 16,
+  classCardHovered: {
+    shadowColor: '#4A90E0', // Sombra con color azul con transparencia
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1, // Transparencia ajustada a 0.2
+    shadowRadius: 10,
+    elevation: 5, // Agregar elevación para dispositivos Android
   },
 });
 
@@ -190,37 +286,22 @@ const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
     fontSize: 16,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 10,
-    color: '#000',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginRight: 16,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    color: 'black',
+    paddingRight: 30, // Necesario para icono de selector
   },
   inputAndroid: {
     fontSize: 16,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 10,
-    color: '#000',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginRight: 16,
-  },
-  placeholder: {
-    color: '#aaa',
+    borderColor: '#ccc',
+    borderRadius: 8,
+    color: 'black',
+    paddingRight: 30, // Necesario para icono de selector
   },
 });
 

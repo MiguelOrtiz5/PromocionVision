@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@keystone-6/auth": "^8.0.0",
-    "@keystone-6/core": "^6.0.0",
+    "@keystone-6/core": "^6.3.1",
     "@keystone-6/fields-document": "^9.0.0",
     "typescript": "^5.6.3"
   },

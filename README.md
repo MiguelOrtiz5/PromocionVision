@@ -1,8 +1,13 @@
-# Proyecto de Promoción para la carrera de TI e ISC
+# 2024-3-ISC09-Automatic-Student-Detection-And-Attendance-Control
+
+<p align="center">
+  <img src="./ClassTrack/assets/images/logo.png" alt="ClassTrack Logo" />
+</p>
+
 
 ## Overview
 
-This monorepo contains multiple packages related to the ClassTrack application. The main packages are:
+This monorepo contains multiple packages related to the **ClassTrack** application. The main packages are:
 
 - `RaspberryApp`: Placeholder for Raspberry Pi related applications.
 - `backend`: Backend API built with KeystoneJS.
@@ -47,49 +52,91 @@ For more details, refer to the [README.md](packages/ClassTrack/README.md) in the
 
 ### Prerequisites
 
-- Node.js
-- Yarn
+Before starting, make sure you have the following:
+
+- **Node.js**
+- **Yarn** or **npm**
+- **Expo CLI** (for the frontend application)
+- **Python 3** (for Raspberry Pi scripts)
+- **Raspberry Pi** (for the hardware integration)
 
 ### Installation
 
 1. Clone the repository:
-    ```sh
-    git clone <repository-url>
-    cd 2024-3-ISC09-Deteccion-Automatica-de-Estudiantes-y-Control-de-Asistencia
-    ```
 
-2. Install dependencies:
-    ```sh
-    yarn install
-    ```
+        git clone <repository-url>
+        cd 2024-3-ISC09-Deteccion-Automatica-de-Estudiantes-y-Control-de-Asistencia
+
+
+2. Install dependencies for both **/backend** and **/ClassTrack**:
+
+   If using **Yarn**:
+
+        yarn install
+
+   If using **NPM**:
+
+        npm install
+
 
 ### Running the Applications
 
 #### Backend (backend)
 
-Navigate to the `backend` directory and start the KeystoneJS server:
+1. Navigate to the `backend` directory and start the KeystoneJS server:
+
+   
+        cd /backend
+
+2. Dependign on what your're using:
+
+    - Using Yarn:
+        
+        ```sh
+        yarn start
+        ```
+
+    - Using NPM:
+        
+        ```sh
+        npx keystone dev
+        ```
+        
+
+#### Frontend (ClassTrack)
+
+1. Navigate to the `ClassTrack` directory and start the React Native App:
+
+        cd ClassTrack
+
+2. Dependign on what your're using:
+
+    - Using Yarn:
+        
+        ```sh
+        yarn start
+        ```
+
+    - Using NPM:
+        
+        ```sh
+        npx expo start
+        ```
+#### **RaspberryPi Setup (RaspberryApp)**
+
+1. Clone the repository to your Raspberry Pi:
 
     ```sh
-    cd packages/backend
-    yarn start
+    git clone <repository-url>
+        cd 2024-3-ISC09-Deteccion-Automatica-de-Estudiantes-y-Control-de-Asistencia/RaspberryApp
     ```
 
-#### Frontend (vive-hub-app)
+2. Install Python dependencies.
 
-Navigate to the `vive-hub-app` directory and start the React Native App:
+3. Run the Raspberry Pi scripts to activate the autoamtic student detection
 
     ```sh
-    cd packages/vive-hub-api
-    yarn start
+    python3 main.py
     ```
+---
 
-For Android:
-
-    ```sh
-    yarn android
-    ```
-For iOS:
-
-    ```sh
-    yarn ios
-    ```

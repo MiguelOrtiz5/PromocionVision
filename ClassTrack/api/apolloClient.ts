@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const httpLink = createHttpLink({
-  uri: 'https://classtrack-api-alumnos-bqh8a0fnbpefhhgq.mexicocentral-01.azurewebsites.net/api/graphql', // Asegúrate de que esta URL sea correcta
+  uri: 'http://localhost:3000/api/graphql', // Asegúrate de que esta URL sea correcta
 });
 
 const authLink = setContext((_, { headers }) => {

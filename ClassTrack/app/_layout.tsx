@@ -32,6 +32,10 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="StudentProfile"
+            options={{ title: 'Perfil del Estudiante' }}
+          />
           <Stack.Screen name="+not-found" />
         </Stack>
       </ThemeProvider>

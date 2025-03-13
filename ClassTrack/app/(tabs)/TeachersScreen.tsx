@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
-  TeacherProfile: {
+  TeacherProfileScreen: {
     teacherId: string;
   };
 };
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'TeacherProfile'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'TeacherProfileScreen'>;
 
 interface Teacher {
   id: string;
@@ -25,7 +24,7 @@ const TeacherCard: React.FC<Teacher> = ({ id, name, studentID, email }) => {
   const navigation = useNavigation<NavigationProp>();
 
   const handlePress = () => {
-    navigation.navigate('TeacherProfile', { teacherId: id });
+    navigation.navigate('TeacherProfileScreen', { teacherId: id });
   };
 
   return (
@@ -51,11 +50,12 @@ const TeachersScreen: React.FC = () => {
     email: '',
     password: '',
   });
+  const [isSorted, setIsSorted] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
-        const response = await axios.post('https://classtrack-api-alumnos-bqh8a0fnbpefhhgq.mexicocentral-01.azurewebsites.net/api/graphql', {
+        const response = await axios.post('http://localhost:3000/api/graphql', {
           query: `
             query Query($where: UserWhereInput!) {
               users(where: $where) {
@@ -80,8 +80,13 @@ const TeachersScreen: React.FC = () => {
   }, []);
 
   const handleCreateTeacher = async () => {
+    if (!newTeacher.name || !newTeacher.studentID || !newTeacher.email) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+
     try {
-      const response = await axios.post('https://classtrack-api-alumnos-bqh8a0fnbpefhhgq.mexicocentral-01.azurewebsites.net/api/graphql', {
+      const response = await axios.post('http://localhost:3000/api/graphql', {
         query: `
           mutation Mutation($data: UserCreateInput!) {
             createUser(data: $data) {
@@ -97,29 +102,34 @@ const TeachersScreen: React.FC = () => {
             name: newTeacher.name,
             studentID: newTeacher.studentID,
             email: newTeacher.email,
-            password: newTeacher.password,
+            password: '12345678', // Contraseña predeterminada
             role: 'teacher',
           },
         },
       });
 
       const createdTeacher = response.data.data.createUser;
-      setTeachers([...teachers, createdTeacher]);
-      Alert.alert('Success', 'Teacher created successfully!');
-      setModalVisible(false);
+      if (createdTeacher) {
+        setTeachers([...teachers, createdTeacher]);
+        Alert.alert('Success', 'Teacher created successfully!');
+        setModalVisible(false);
+      } else {
+        throw new Error('Invalid response');
+      }
     } catch (error) {
       console.error('Error creating teacher:', error);
       Alert.alert('Error', 'Failed to create teacher. Please try again.');
     }
   };
 
+
+
   const sortData = () => {
-    if (sortOption === 'name') {
+    if (isSorted) {
       return [...teachers].sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortOption === 'studentID') {
-      return [...teachers].sort((a, b) => a.studentID.localeCompare(b.studentID));
+    } else {
+      return teachers;
     }
-    return teachers;
   };
 
   if (loading) {
@@ -134,24 +144,25 @@ const TeachersScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Teacher List</Text>
-        <RNPickerSelect
-          onValueChange={(value) => setSortOption(value)}
-          items={[
-            { label: 'Name', value: 'name' },
-            { label: 'ID', value: 'studentID' },
-          ]}
-          style={pickerSelectStyles}
-          value={sortOption}
-          placeholder={{ label: 'Sort by...', value: null }}
-          useNativeAndroidPickerStyle={false}
-        />
+        <TouchableOpacity onPress={() => setIsSorted(!isSorted)}>
+          <FontAwesome
+            name={isSorted ? 'sort-alpha-asc' : 'sort'}
+            size={20}
+            color="#fff"
+          />
+        </TouchableOpacity>
       </View>
       <FlatList
         contentContainerStyle={styles.listContainer}
         data={sortData()}
-        keyExtractor={(item) => item.studentID}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TeacherCard id={item.studentID} name={item.name} studentID={item.studentID} email={item.email} />
+          <TeacherCard
+            id={item.id}
+            name={item.name}
+            studentID={item.studentID}
+            email={item.email}
+          />
         )}
       />
       <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
@@ -168,7 +179,7 @@ const TeachersScreen: React.FC = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Student ID"
+            placeholder="ID"
             value={newTeacher.studentID}
             onChangeText={(text) => setNewTeacher({ ...newTeacher, studentID: text })}
           />
@@ -178,17 +189,12 @@ const TeachersScreen: React.FC = () => {
             value={newTeacher.email}
             onChangeText={(text) => setNewTeacher({ ...newTeacher, email: text })}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            secureTextEntry
-            value={newTeacher.password}
-            onChangeText={(text) => setNewTeacher({ ...newTeacher, password: text })}
-          />
+          {/* Campo de contraseña eliminado */}
           <Button title="Create" onPress={handleCreateTeacher} />
           <Button title="Cancel" color="red" onPress={() => setModalVisible(false)} />
         </View>
       </Modal>
+
     </View>
   );
 };
@@ -203,7 +209,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#6200EE',
+    backgroundColor: '#1e3a63',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
   },
@@ -221,6 +227,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 16,
+    marginTop: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     shadowColor: '#000',
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   addButton: {
-    backgroundColor: '#6200EE',
+    backgroundColor: '#1e3a63',
     padding: 16,
     margin: 16,
     borderRadius: 8,
@@ -268,31 +275,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
-  },
-});
-
-const pickerSelectStyles = StyleSheet.create({
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    color: '#000',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    color: '#000',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
   },
 });
 

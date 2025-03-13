@@ -1,141 +1,32 @@
-import React, { useEffect, useState } from 'react'
-import { StyleSheet, TouchableOpacity, Text, useColorScheme, View, Image } from 'react-native'
-import * as WebBrowser from 'expo-web-browser'
-import * as AuthSession from 'expo-auth-session'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import Ionicons from '@expo/vector-icons/Ionicons'
-import { useNavigation } from '@react-navigation/native'
-import { ThemedView } from '../components/ThemedView'
-import { jwtDecode } from 'jwt-decode';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, Text, useColorScheme, View, Image } from 'react-native';
+import { ThemedView } from '../components/ThemedView';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 
-const tenetID = "55c141c0-1153-41d9-8f6f-f53ab9f5da3a";
-const clientID = "a4c4ef1c-b9e8-4ac5-b941-3219f02288f6";
+export default function OfficeSignIn(): JSX.Element {
+  const colorScheme = useColorScheme();
+  const router = useRouter();
 
-WebBrowser.maybeCompleteAuthSession()
-
-export default function OfficeSignIn(props: any) {
-  const [discovery, $discovery]: any = useState({})
-  const [authRequest, $authRequest]: any = useState({})
-  const [authorizeResult, $authorizeResult]: any = useState({})
-  const [isSignedIn, setIsSignedIn] = useState(false)
-  const colorScheme = useColorScheme()
-  const navigation = useNavigation()  // Initialize navigation
-  const scopes = ['openid', 'profile', 'email', 'offline_access']
-  const domain = `https://login.microsoftonline.com/${tenetID}/v2.0`
-  const redirectUrl = AuthSession.makeRedirectUri(__DEV__ ? { scheme: 'myapp' } : {})
-
-  useEffect(() => {
-    const getSession = async () => {
-      const d = await AuthSession.fetchDiscoveryAsync(domain)
-
-      const authRequestOptions: AuthSession.AuthRequestConfig = {
-        prompt: AuthSession.Prompt.Login,
-        responseType: AuthSession.ResponseType.Code,
-        scopes: scopes,
-        usePKCE: true,
-        clientId: clientID,
-        redirectUri: __DEV__ ? redirectUrl : redirectUrl + 'example',
-      }
-      const authRequest = new AuthSession.AuthRequest(authRequestOptions)
-      $authRequest(authRequest)
-      $discovery(d)
-    }
-    getSession()
-    checkSignInStatus()
-  }, [])
-
-  useEffect(() => {
-    const getCodeExchange = async () => {
-      try {
-        const tokenResult = await AuthSession.exchangeCodeAsync(
-          {
-            code: authorizeResult.params.code,
-            clientId: clientID,
-            redirectUri: __DEV__ ? redirectUrl : redirectUrl + 'example',
-            extraParams: {
-              code_verifier: authRequest.codeVerifier || '',
-            },
-          },
-          discovery
-        );
-    
-        const { accessToken, idToken } = tokenResult;
-    
-        // Decode the ID token or access token
-        const decodedToken: any = jwtDecode(idToken || accessToken);
-    
-        // Extract name and email directly
-        const userName = decodedToken.name; // Full name
-        const userEmail = decodedToken.preferred_username; // Email address
-    
-        console.log('Decoded Token:', decodedToken);
-    
-        // Store the information locally
-        await AsyncStorage.setItem('accessToken', accessToken);
-        await AsyncStorage.setItem('userEmail', userEmail);
-        await AsyncStorage.setItem('userName', userName);
-    
-        setIsSignedIn(true);
-      } catch (error) {
-        console.error('Error during token exchange:', error);
-      }
-    };
-    
-
-    if (authorizeResult && authorizeResult.type === 'success' && authRequest && authRequest.codeVerifier) {
-      getCodeExchange()
-    }
-  }, [authorizeResult, authRequest])
-
-  useEffect(() => {
-    // Redirect if the user is already signed in
-    if (isSignedIn) {
-      navigation.navigate('(tabs)')  // Navigate to home if authenticated
-    }
-  }, [isSignedIn])
-
-  const handleSignIn = async () => {
-    const result = await authRequest.promptAsync(discovery)
-    $authorizeResult(result)
-  }
-
-  const handleSignOut = async () => {
-    await AsyncStorage.removeItem('accessToken')
-    setIsSignedIn(false)
-  }
-
-  const checkSignInStatus = async () => {
-    const token = await AsyncStorage.getItem('accessToken')
-    setIsSignedIn(!!token)
-  }
+  const handleNavigate = () => {
+    router.push('/(tabs)/TeacherClassesScreen'); // Cambia esta ruta si es necesario
+  };
 
   return (
     <ThemedView style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>ClassTrack</Text>
         <Image source={require('../assets/images/ClassTrack3.png')} style={styles.logo} />
-        {authRequest && discovery ? (
-          isSignedIn ? (
-            <TouchableOpacity
-              style={[styles.button, colorScheme === 'dark' ? styles.buttonDark : styles.buttonLight]}
-              onPress={handleSignOut}
-            >
-              <Ionicons name="log-out-outline" size={24} color="#ffffff" />
-              <Text style={[styles.buttonText, styles.textDark]}>Sign Out</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.button, colorScheme === 'dark' ? styles.buttonDark : styles.buttonLight]}
-              onPress={handleSignIn}
-            >
-              <Ionicons name="logo-microsoft" size={24} color="#ffffff" />
-              <Text style={[styles.buttonText, styles.textDark]}>Sign In Microsoft</Text>
-            </TouchableOpacity>
-          )
-        ) : null}
+        <TouchableOpacity
+          style={[styles.button, colorScheme === 'dark' ? styles.buttonDark : styles.buttonLight]}
+          onPress={handleNavigate}
+        >
+          <Ionicons name="log-in-outline" size={24} color="#ffffff" />
+          <Text style={[styles.buttonText, styles.textDark]}>Iniciar</Text>
+        </TouchableOpacity>
       </View>
     </ThemedView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -189,4 +80,4 @@ const styles = StyleSheet.create({
   textDark: {
     color: '#ffffff',
   },
-})
+});
