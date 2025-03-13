@@ -1,4 +1,4 @@
-# 2024-3-ISC09-Deteccion-Automatica-de-Estudiantes-y-Control-de-Asistencia
+# Proyecto de Promoción para la carrera de TI e ISC
 
 ## Overview
 
