@@ -9,7 +9,7 @@ import Adafruit_DHT
 from azure.storage.blob import BlobServiceClient
 
 # Cadena de conexión a tu cuenta de almacenamiento de Azure
-connect_str = "DefaultEndpointsProtocol=https;AccountName=pruebasrasp;AccountKey=SZrfo+M8RBEcqP3KOrX8Jn5VOO26n7v3dyB+MSEgqlWFui5VSHWVQ7S40JSYRjiLLiqzt5FM3sHl+AStmOJwHQ==;EndpointSuffix=core.windows.net"
+#connect_str = "DefaultEndpointsProtocol=https;AccountName=pruebasrasp;AccountKey=SZrfo+M8RBEcqP3KOrX8Jn5VOO26n7v3dyB+MSEgqlWFui5VSHWVQ7S40JSYRjiLLiqzt5FM3sHl+AStmOJwHQ==;EndpointSuffix=core.windows.net"
 container_name = "pruebasrasp"  # Nombre del contenedor
 
 # Crear un cliente para interactuar con Azure Blob Storage
