@@ -9,7 +9,6 @@ import Adafruit_DHT
 from azure.storage.blob import BlobServiceClient
 
 # Cadena de conexión a tu cuenta de almacenamiento de Azure
-container_name = "pruebasrasp"  # Nombre del contenedor
 
 # Crear un cliente para interactuar con Azure Blob Storage
 blob_service_client = BlobServiceClient.from_connection_string(connect_str)
