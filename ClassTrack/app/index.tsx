@@ -1,83 +1,56 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, Text, useColorScheme, View, Image } from 'react-native';
-import { ThemedView } from '../components/ThemedView';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+// app/OfficeSignIn.tsx
+
+import React from 'react'
+import { useColorScheme } from 'react-native'
+import Ionicons from '@expo/vector-icons/Ionicons'
+import { useRouter } from 'expo-router'
+import { Center, Box, Heading, Image, Button } from 'native-base'
 
 export default function OfficeSignIn(): JSX.Element {
-  const colorScheme = useColorScheme();
-  const router = useRouter();
+  const colorScheme = useColorScheme()
+  const router = useRouter()
 
   const handleNavigate = () => {
-    router.push('/(tabs)/TeacherClassesScreen'); // Cambia esta ruta si es necesario
-  };
+    router.push('/(drawer)/TeacherClassesScreen')
+  }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>ClassTrack</Text>
-        <Image source={require('../assets/images/ClassTrack3.png')} style={styles.logo} />
-        <TouchableOpacity
-          style={[styles.button, colorScheme === 'dark' ? styles.buttonDark : styles.buttonLight]}
-          onPress={handleNavigate}
-        >
-          <Ionicons name="log-in-outline" size={24} color="#ffffff" />
-          <Text style={[styles.buttonText, styles.textDark]}>Iniciar</Text>
-        </TouchableOpacity>
-      </View>
-    </ThemedView>
-  );
-}
+    <Center flex={1} px={4} bg={colorScheme === 'dark' ? 'gray.900' : 'gray.50'}>
+      {/* Tarjeta/Card más amplia */}
+      <Box
+        w="90%"
+        maxW="400px"
+        p={8}
+        borderRadius="lg"
+        bg={colorScheme === 'dark' ? 'gray.800' : 'white'}
+        shadow={3}
+        alignItems="center"
+      >
+        {/* Título */}
+        <Heading size="xl" mb={6} color={colorScheme === 'dark' ? 'white' : 'black'}>
+          ClassTrack
+        </Heading>
 
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  card: {
-    width: '40%',
-    padding: 20,
-    borderRadius: 5,
-    alignItems: 'center',
-    backgroundColor: '#1C1C1C',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#ffffff',
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-    marginBottom: 20,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    marginTop: 20,
-  },
-  buttonLight: {
-    backgroundColor: '#00A4EF',
-  },
-  buttonDark: {
-    backgroundColor: '#00A4EF',
-  },
-  buttonText: {
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  textDark: {
-    color: '#ffffff',
-  },
-});
+        {/* Logo */}
+        <Image
+          source={require('../assets/images/ClassTrack3.png')}
+          alt="Logo ClassTrack"
+          size={120}
+          mb={8}
+        />
+
+        {/* Botón con efecto hover (solo color) */}
+        <Button
+          leftIcon={<Ionicons name="log-in-outline" size={20} color="white" />}
+          colorScheme="blue"
+          size="lg"
+          onPress={handleNavigate}
+          _pressed={{ bg: 'blue.600' }}
+          _hover={{ bg: colorScheme === 'dark' ? 'blue.500' : 'blue.700' }}
+        >
+          Iniciar
+        </Button>
+      </Box>
+    </Center>
+  )
+}
